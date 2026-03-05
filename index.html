@@ -1,0 +1,1408 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>AP Stats Calculator + PDF Checker</title>
+
+  <!-- PWA / iOS "app-like" settings -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0b1020">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="AP Stats">
+  <link rel="apple-touch-icon" href="icon-192.png">
+
+  <style>
+    :root{
+      --bg:#0b1020; --bg2:#101a33;
+      --card:rgba(255,255,255,.08); --stroke:rgba(255,255,255,.14);
+      --text:rgba(255,255,255,.92); --muted:rgba(255,255,255,.70);
+      --accent:#8fb4ff; --accent2:#c1fffd; --good:#7ef3c9; --warn:#ffd27e; --bad:#ff7e9d;
+      --radius:18px; --shadow:0 18px 50px rgba(0,0,0,.35);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --sans: ui-sans-serif, -apple-system, system-ui, "Segoe UI", Roboto, Helvetica, Arial;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; color:var(--text); font-family:var(--sans);
+      background:
+        radial-gradient(900px 650px at 15% 10%, rgba(143,180,255,0.25), transparent 55%),
+        radial-gradient(900px 650px at 80% 20%, rgba(193,255,253,0.20), transparent 55%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+    }
+    header{
+      position:sticky; top:0; z-index:50;
+      backdrop-filter: blur(10px);
+      background: linear-gradient(180deg, rgba(11,16,32,.88), rgba(11,16,32,.55));
+      border-bottom:1px solid rgba(255,255,255,.10);
+    }
+    .wrap{max-width:1100px; margin:0 auto; padding:14px 16px;}
+    .top{display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;}
+    .brand{display:flex; gap:12px; align-items:center;}
+    .logo{
+      width:44px; height:44px; border-radius:14px;
+      background: radial-gradient(circle at 30% 25%, rgba(143,180,255,.9), rgba(193,255,253,.35) 55%, rgba(255,126,157,.25) 100%);
+      border:1px solid rgba(255,255,255,.16); box-shadow:var(--shadow);
+      display:grid; place-items:center;
+    }
+    .title h1{margin:0; font-size:16px; line-height:1.1}
+    .title p{margin:2px 0 0 0; color:var(--muted); font-size:12px}
+    .actions{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    select, input, textarea, button{
+      font-family:inherit; color:var(--text);
+      background: rgba(255,255,255,.07);
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:14px; padding:10px 12px; outline:none;
+    }
+    button{cursor:pointer}
+    button.primary{
+      background: linear-gradient(135deg, rgba(143,180,255,.35), rgba(193,255,253,.18));
+      border-color: rgba(193,255,253,.25);
+    }
+    button.danger{background: rgba(255,126,157,.18); border-color: rgba(255,126,157,.28)}
+    main .wrap{padding:18px 16px 40px}
+    .grid{display:grid; grid-template-columns:360px 1fr; gap:14px; align-items:start;}
+    @media (max-width:980px){ .grid{grid-template-columns:1fr;} }
+    .card{
+      border-radius:var(--radius);
+      background: linear-gradient(180deg, var(--card), rgba(255,255,255,.05));
+      border:1px solid rgba(255,255,255,.13);
+      box-shadow:var(--shadow); overflow:hidden;
+    }
+    .hd{
+      padding:14px; display:flex; align-items:center; justify-content:space-between; gap:10px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+    }
+    .pill{
+      font-size:12px; padding:5px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      color:var(--muted); background: rgba(255,255,255,.05);
+      white-space:nowrap;
+    }
+    .body{padding:14px}
+    .tabs{display:flex; gap:8px; flex-wrap:wrap}
+    .tab{
+      padding:9px 11px; border-radius:999px;
+      background: rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12);
+      color:var(--muted); font-size:13px; cursor:pointer; user-select:none;
+    }
+    .tab.active{
+      background: linear-gradient(135deg, rgba(143,180,255,.22), rgba(193,255,253,.10));
+      border-color: rgba(143,180,255,.35); color:var(--text);
+    }
+    label{display:block; font-size:12px; color:var(--muted); margin: 0 0 6px 2px;}
+    textarea{min-height:90px; resize:vertical}
+    .hint{color:rgba(255,255,255,.55); font-size:12px; margin-top:10px; line-height:1.35}
+    .hr{height:1px; background: rgba(255,255,255,.10); margin:12px 0}
+    .kpi{display:grid; grid-template-columns: repeat(4,1fr); gap:10px}
+    @media (max-width:980px){ .kpi{grid-template-columns: repeat(2,1fr);} }
+    @media (max-width:480px){ .kpi{grid-template-columns:1fr;} }
+    .k{padding:12px; border-radius:16px; background: rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.10)}
+    .k .lab{color:var(--muted); font-size:12px; margin-bottom:6px}
+    .k .val{font-family:var(--mono); font-size:14px}
+    .k .val strong{color:var(--accent2)}
+    .split{display:grid; grid-template-columns: 1.2fr .8fr; gap:12px}
+    @media (max-width:980px){ .split{grid-template-columns:1fr;} }
+    .step{
+      padding:12px; border-radius:16px;
+      background: rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.10);
+      margin-bottom:10px;
+    }
+    .step h3{margin:0 0 8px 0; font-size:13px; display:flex; align-items:center; gap:8px}
+    .dot{width:10px; height:10px; border-radius:999px; background: rgba(143,180,255,.9)}
+    .dot.good{background: rgba(126,243,201,.95)}
+    .dot.warn{background: rgba(255,210,126,.95)}
+    .dot.bad{background: rgba(255,126,157,.95)}
+    .mini{
+      font-family:var(--mono); font-size:12px; color:rgba(255,255,255,.80);
+      padding:10px 12px; border-radius:14px;
+      background: rgba(0,0,0,.20); border:1px solid rgba(255,255,255,.10);
+      white-space:pre-wrap; overflow:auto; line-height:1.35;
+    }
+    .canvasWrap{
+      border-radius:18px; background: rgba(0,0,0,.20);
+      border:1px solid rgba(255,255,255,.12);
+      padding:10px; overflow:hidden;
+    }
+    canvas{width:100%; height:280px; display:block;}
+    .tiny{font-size:11px; color:rgba(255,255,255,.55); margin-top:8px; line-height:1.35}
+    .linkish{color:var(--accent2); text-decoration: underline dotted; cursor:pointer}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg width="30" height="30" viewBox="0 0 64 64" fill="none">
+            <path d="M12 40c4 8 12 14 20 14s16-6 20-14" stroke="rgba(255,255,255,0.9)" stroke-width="4" stroke-linecap="round"/>
+            <path d="M18 28c0-6 6-10 14-10s14 4 14 10" stroke="rgba(255,255,255,0.85)" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="24" cy="32" r="3" fill="rgba(193,255,253,0.95)"/>
+            <circle cx="40" cy="32" r="3" fill="rgba(143,180,255,0.95)"/>
+            <path d="M32 8l4 6-4 6-4-6 4-6z" fill="rgba(255,126,157,0.75)"/>
+          </svg>
+        </div>
+        <div class="title">
+          <h1>AP Stats Calculator</h1>
+          <p>Step-by-step • graphs • models • PDF rubric checker</p>
+        </div>
+      </div>
+
+      <div class="actions">
+        <select id="modeSelect" title="Choose tool">
+          <option value="onePropZ">1-Prop z Test / CI</option>
+          <option value="twoPropZ">2-Prop z Test / CI</option>
+          <option value="oneMeanT">1-Mean t Test / CI</option>
+          <option value="twoMeanT">2-Mean t Test / CI</option>
+          <option value="chiSquare">Chi-Square (GOF / Independence)</option>
+          <option value="regression">Linear Regression + Residuals</option>
+          <option value="normalCalc">Normal / t Probabilities</option>
+          <option value="power">Power (1-Prop z approx)</option>
+          <option value="pdfGrader">PDF Homework Checker</option>
+        </select>
+        <button class="primary" id="computeBtn">Compute</button>
+        <button id="exampleBtn">Load Example</button>
+        <button class="danger" id="resetBtn">Reset</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="grid">
+      <section class="card">
+        <div class="hd">
+          <div style="display:flex;gap:10px;align-items:center">
+            <h2 id="inputTitle" style="margin:0;font-size:14px">Inputs</h2>
+          </div>
+          <span class="pill" id="topicPill">Ready</span>
+        </div>
+        <div class="body">
+          <div class="tabs" id="subtabs"></div>
+          <div class="hr"></div>
+          <div id="inputs"></div>
+          <div class="hint">
+            Tip: After you compute, tap <span class="linkish" id="copySteps">copy steps</span>.
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="hd">
+          <h2 style="margin:0;font-size:14px">Results</h2>
+          <span class="pill" id="statusPill">Ready</span>
+        </div>
+        <div class="body">
+          <div class="kpi" id="kpi"></div>
+          <div class="hr"></div>
+
+          <div class="split">
+            <div>
+              <div id="steps"></div>
+              <div class="mini" id="copyBox" style="display:none"></div>
+            </div>
+
+            <div>
+              <div class="canvasWrap">
+                <canvas id="mainChart" width="640" height="420"></canvas>
+                <div class="tiny" id="chartCaption"></div>
+              </div>
+              <div class="hr"></div>
+              <div class="canvasWrap">
+                <canvas id="sideChart" width="640" height="380" style="height:220px"></canvas>
+                <div class="tiny" id="sideCaption"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tiny" style="margin-top:12px">
+            Offline note: the PDF reader (PDF.js) loads from a CDN. Use the app once online first so it can load.
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<!-- PDF.js via jsDelivr (worker required) -->
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.624/build/pdf.min.js"></script>
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.624/build/pdf.worker.min.js";
+</script>
+
+<script>
+/* ===== Service Worker registration (PWA offline) ===== */
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js").catch(console.error);
+}
+
+/* =========================
+   Math helpers
+========================= */
+const $ = (s)=>document.querySelector(s);
+function clamp(x,a,b){ return Math.max(a, Math.min(b,x)); }
+function roundTo(x, d=4){ const p=10**d; return Math.round(x*p)/p; }
+function fmt(x, d=4){
+  if(typeof x!=="number" || !isFinite(x)) return "—";
+  const ax=Math.abs(x);
+  if(ax!==0 && (ax<1e-4 || ax>=1e6)) return x.toExponential(3);
+  return roundTo(x,d).toString();
+}
+function erf(x){
+  const a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429;
+  const p=0.3275911;
+  const sign = x<0?-1:1;
+  x = Math.abs(x);
+  const t = 1/(1+p*x);
+  const y = 1 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t*Math.exp(-x*x);
+  return sign*y;
+}
+function normCDF(z){ return 0.5*(1+erf(z/Math.SQRT2)); }
+function normPDF(z){ return Math.exp(-0.5*z*z)/Math.sqrt(2*Math.PI); }
+function invNorm(p){
+  p = clamp(p, 1e-12, 1-1e-12);
+  const a=[-39.69683028665376, 220.9460984245205, -275.9285104469687, 138.357751867269, -30.66479806614716, 2.506628277459239];
+  const b=[-54.47609879822406, 161.5858368580409, -155.6989798598866, 66.80131188771972, -13.28068155288572];
+  const c=[-0.007784894002430293, -0.3223964580411365, -2.400758277161838, -2.549732539343734, 4.374664141464968, 2.938163982698783];
+  const d=[0.007784695709041462, 0.3224671290700398, 2.445134137142996, 3.754408661907416];
+  const plow=0.02425, phigh=1-plow;
+  let q,r;
+  if(p<plow){
+    q=Math.sqrt(-2*Math.log(p));
+    return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) /
+           ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+  }
+  if(p>phigh){
+    q=Math.sqrt(-2*Math.log(1-p));
+    return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) /
+            ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+  }
+  q=p-0.5; r=q*q;
+  return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q /
+         (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);
+}
+function logGamma(z){
+  const g=7;
+  const p=[0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.3234287776531,
+           -176.6150291621406, 12.507343278686905, -0.13857109526572012, 9.984369578019572e-6, 1.5056327351493116e-7];
+  if(z<0.5) return Math.log(Math.PI)-Math.log(Math.sin(Math.PI*z))-logGamma(1-z);
+  z-=1;
+  let x=p[0];
+  for(let i=1;i<p.length;i++) x += p[i]/(z+i);
+  const t=z+g+0.5;
+  return 0.5*Math.log(2*Math.PI)+(z+0.5)*Math.log(t)-t+Math.log(x);
+}
+function gamma(z){ return Math.exp(logGamma(z)); }
+function betacf(a,b,x){
+  const MAXIT=200, EPS=3e-12, FPMIN=1e-30;
+  let qab=a+b, qap=a+1, qam=a-1;
+  let c=1, d=1-qab*x/qap; if(Math.abs(d)<FPMIN) d=FPMIN; d=1/d;
+  let h=d;
+  for(let m=1;m<=MAXIT;m++){
+    let m2=2*m;
+    let aa = m*(b-m)*x/((qam+m2)*(a+m2));
+    d=1+aa*d; if(Math.abs(d)<FPMIN) d=FPMIN; d=1/d;
+    c=1+aa/c; if(Math.abs(c)<FPMIN) c=FPMIN;
+    h *= d*c;
+
+    aa = -(a+m)*(qab+m)*x/((a+m2)*(qap+m2));
+    d=1+aa*d; if(Math.abs(d)<FPMIN) d=FPMIN; d=1/d;
+    c=1+aa/c; if(Math.abs(c)<FPMIN) c=FPMIN;
+    const del=d*c;
+    h *= del;
+    if(Math.abs(del-1)<EPS) break;
+  }
+  return h;
+}
+function betai(a,b,x){
+  x=clamp(x,0,1);
+  if(x===0||x===1) return x;
+  const bt=Math.exp(logGamma(a+b)-logGamma(a)-logGamma(b)+a*Math.log(x)+b*Math.log(1-x));
+  if(x < (a+1)/(a+b+2)) return bt*betacf(a,b,x)/a;
+  return 1 - bt*betacf(b,a,1-x)/b;
+}
+function tCDF(t, df){
+  const x=df/(df+t*t);
+  const ib=betai(df/2, 0.5, x);
+  return t>=0 ? 1-0.5*ib : 0.5*ib;
+}
+function tPDF(t, df){
+  const num=gamma((df+1)/2);
+  const den=Math.sqrt(df*Math.PI)*gamma(df/2);
+  return (num/den)*Math.pow(1+t*t/df, -(df+1)/2);
+}
+function invTCrit(p, df){
+  p=clamp(p,1e-10,1-1e-10);
+  let lo=-60, hi=60;
+  for(let i=0;i<90;i++){
+    const mid=(lo+hi)/2;
+    if(tCDF(mid,df) < p) lo=mid; else hi=mid;
+  }
+  return (lo+hi)/2;
+}
+function gammap(a,x){
+  const ITMAX=200, EPS=3e-12;
+  if(x<=0) return 0;
+  if(x < a+1){
+    let ap=a, sum=1/a, del=sum;
+    for(let n=1;n<=ITMAX;n++){
+      ap+=1; del*=x/ap; sum+=del;
+      if(Math.abs(del) < Math.abs(sum)*EPS) break;
+    }
+    return sum*Math.exp(-x + a*Math.log(x) - logGamma(a));
+  }else{
+    let b=x+1-a, c=1/1e-30, d=1/b, h=d;
+    for(let i=1;i<=ITMAX;i++){
+      const an=-i*(i-a);
+      b+=2;
+      d=an*d + b; if(Math.abs(d)<1e-30) d=1e-30;
+      c=b + an/c; if(Math.abs(c)<1e-30) c=1e-30;
+      d=1/d;
+      const del=d*c;
+      h*=del;
+      if(Math.abs(del-1)<EPS) break;
+    }
+    const q=h*Math.exp(-x + a*Math.log(x) - logGamma(a));
+    return 1-q;
+  }
+}
+function chi2PDF(x,k){
+  if(x<0) return 0;
+  const a=k/2;
+  return (1/(Math.pow(2,a)*gamma(a))) * Math.pow(x,a-1)*Math.exp(-x/2);
+}
+function chi2CDF(x,k){ return gammap(k/2, x/2); }
+function twoSidedFromUpperTail(upper){ return clamp(2*upper, 0, 1); }
+
+/* =========================
+   Drawing helpers
+========================= */
+function setPill(text, tone=""){
+  const p=$("#statusPill");
+  p.textContent=text;
+  p.style.borderColor = tone==="good" ? "rgba(126,243,201,0.35)" :
+                        tone==="warn" ? "rgba(255,210,126,0.35)" :
+                        tone==="bad"  ? "rgba(255,126,157,0.35)" : "rgba(255,255,255,0.14)";
+  p.style.color = tone==="good" ? "rgba(126,243,201,0.95)" :
+                 tone==="warn" ? "rgba(255,210,126,0.95)" :
+                 tone==="bad"  ? "rgba(255,126,157,0.95)" : "rgba(255,255,255,0.72)";
+}
+function clearCanvas(c){ c.getContext("2d").clearRect(0,0,c.width,c.height); }
+function drawAxes(ctx,w,h,p=44){
+  ctx.save(); ctx.globalAlpha=.85; ctx.strokeStyle="rgba(255,255,255,.22)"; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(p,h-p); ctx.lineTo(w-p,h-p); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(p,h-p); ctx.lineTo(p,p); ctx.stroke();
+  ctx.restore(); return p;
+}
+function drawText(ctx, t, x,y, size=12, a=.85){
+  ctx.save(); ctx.globalAlpha=a; ctx.fillStyle="white";
+  ctx.font=`${size}px system-ui, -apple-system, Segoe UI, Roboto`;
+  ctx.fillText(t,x,y); ctx.restore();
+}
+function plotCurve(canvas, xMin,xMax, yMax, f, shade=null, title=""){
+  const ctx=canvas.getContext("2d");
+  clearCanvas(canvas);
+  const w=canvas.width, h=canvas.height, pad=44;
+  drawAxes(ctx,w,h,pad);
+  const xToPx=x=>pad+(x-xMin)/(xMax-xMin)*(w-2*pad);
+  const yToPx=y=>(h-pad)-(y/yMax)*(h-2*pad);
+
+  ctx.save(); ctx.strokeStyle="rgba(193,255,253,.85)"; ctx.lineWidth=3;
+  ctx.beginPath();
+  const N=420;
+  for(let i=0;i<=N;i++){
+    const x=xMin+(xMax-xMin)*i/N;
+    const y=f(x);
+    if(i===0) ctx.moveTo(xToPx(x), yToPx(y));
+    else ctx.lineTo(xToPx(x), yToPx(y));
+  }
+  ctx.stroke(); ctx.restore();
+
+  if(shade){
+    ctx.save(); ctx.fillStyle="rgba(143,180,255,.22)";
+    const fillBetween=(a,b)=>{
+      const n=320;
+      ctx.beginPath();
+      ctx.moveTo(xToPx(a), yToPx(0));
+      for(let i=0;i<=n;i++){
+        const x=a+(b-a)*i/n;
+        ctx.lineTo(xToPx(x), yToPx(f(x)));
+      }
+      ctx.lineTo(xToPx(b), yToPx(0));
+      ctx.closePath(); ctx.fill();
+    };
+    if(shade.type==="left") fillBetween(xMin, shade.a);
+    if(shade.type==="right") fillBetween(shade.a, xMax);
+    if(shade.type==="between") fillBetween(shade.a, shade.b);
+    if(shade.type==="two"){ fillBetween(xMin, shade.a); fillBetween(shade.b, xMax); }
+    ctx.restore();
+  }
+
+  drawText(ctx, title, pad, 22, 13, .9);
+}
+function scatterPlot(canvas, pts, fit=null, title=""){
+  const ctx=canvas.getContext("2d");
+  clearCanvas(canvas);
+  const w=canvas.width, h=canvas.height, pad=44;
+  drawAxes(ctx,w,h,pad);
+
+  if(!pts.length){ drawText(ctx,"No data.", pad, pad+20); return; }
+  const xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]);
+  let xMin=Math.min(...xs), xMax=Math.max(...xs);
+  let yMin=Math.min(...ys), yMax=Math.max(...ys);
+  const mx=(xMax-xMin)*.08||1, my=(yMax-yMin)*.12||1;
+  xMin-=mx; xMax+=mx; yMin-=my; yMax+=my;
+
+  const xToPx=x=>pad+(x-xMin)/(xMax-xMin)*(w-2*pad);
+  const yToPx=y=>(h-pad)-(y-yMin)/(yMax-yMin)*(h-2*pad);
+
+  ctx.save(); ctx.fillStyle="rgba(193,255,253,.9)";
+  for(const [x,y] of pts){ ctx.beginPath(); ctx.arc(xToPx(x), yToPx(y), 4, 0, Math.PI*2); ctx.fill(); }
+  ctx.restore();
+
+  if(fit){
+    const {b0,b1}=fit;
+    const yA=b0+b1*xMin, yB=b0+b1*xMax;
+    ctx.save(); ctx.strokeStyle="rgba(255,210,126,.85)"; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(xToPx(xMin), yToPx(yA)); ctx.lineTo(xToPx(xMax), yToPx(yB)); ctx.stroke();
+    ctx.restore();
+  }
+
+  drawText(ctx,title,pad,22,13,.9);
+}
+
+/* =========================
+   UI helpers
+========================= */
+function kpi(items){
+  const box=$("#kpi"); box.innerHTML="";
+  for(const it of items){
+    const d=document.createElement("div");
+    d.className="k";
+    d.innerHTML=`<div class="lab">${it.lab}</div><div class="val">${it.val}</div>`;
+    box.appendChild(d);
+  }
+}
+function steps(list){
+  const box=$("#steps"); box.innerHTML="";
+  const copy=[];
+  for(const s of list){
+    const d=document.createElement("div");
+    d.className="step";
+    d.innerHTML=`<h3><span class="dot ${s.dot||""}"></span>${s.title}</h3><div class="mini">${s.body}</div>`;
+    box.appendChild(d);
+    copy.push(`• ${s.title}\n${s.body}\n`);
+  }
+  $("#copyBox").textContent=copy.join("\n");
+  $("#copyBox").style.display="none";
+}
+$("#copySteps").onclick = async ()=>{
+  const txt=$("#copyBox").textContent || "";
+  if(!txt.trim()) return;
+  try{
+    await navigator.clipboard.writeText(txt);
+    setPill("Steps copied ✅","good");
+    setTimeout(()=>setPill("Ready"), 1200);
+  }catch{
+    $("#copyBox").style.display="block";
+    setPill("Copy box shown","warn");
+  }
+};
+
+/* =========================
+   Parse helpers
+========================= */
+function parseList(str){
+  return String(str).split(",").map(s=>s.trim()).filter(Boolean).map(Number).filter(v=>isFinite(v));
+}
+function parseTable(str){
+  const rows=String(str).trim().split("\n").map(r=>r.trim()).filter(Boolean);
+  return rows.map(r=>r.split(",").map(s=>s.trim()).map(Number));
+}
+function getVal(id){
+  const el=document.getElementById("fld_"+id);
+  if(!el) return null;
+  if(el.tagName==="SELECT") return el.value;
+  if(el.type==="number") return Number(el.value);
+  return el.value;
+}
+
+/* =========================
+   Calculators
+========================= */
+function onePropZTest({x,n,p0,alt,alpha}){
+  const phat=x/n;
+  const se=Math.sqrt(p0*(1-p0)/n);
+  const z=(phat-p0)/se;
+  let p;
+  if(alt==="gt") p=1-normCDF(z);
+  else if(alt==="lt") p=normCDF(z);
+  else p=twoSidedFromUpperTail(1-normCDF(Math.abs(z)));
+  return {phat,se,z,p,alpha,reject:p<alpha, conds:{c1:n*p0>=10,c2:n*(1-p0)>=10}};
+}
+function onePropCI({x,n,conf}){
+  const phat=x/n;
+  const zstar=invNorm(1-(1-conf)/2);
+  const se=Math.sqrt(phat*(1-phat)/n);
+  const me=zstar*se;
+  return {phat,zstar,se,me,lo:phat-me,hi:phat+me,conf};
+}
+function twoPropZTest({x1,n1,x2,n2,d0,alt,alpha}){
+  const p1=x1/n1, p2=x2/n2;
+  const pPool=(x1+x2)/(n1+n2);
+  const se=Math.sqrt(pPool*(1-pPool)*(1/n1+1/n2));
+  const z=((p1-p2)-d0)/se;
+  let p;
+  if(alt==="gt") p=1-normCDF(z);
+  else if(alt==="lt") p=normCDF(z);
+  else p=twoSidedFromUpperTail(1-normCDF(Math.abs(z)));
+  return {p1,p2,pPool,se,z,p,alpha,reject:p<alpha};
+}
+function twoPropCI({x1,n1,x2,n2,conf}){
+  const p1=x1/n1, p2=x2/n2;
+  const diff=p1-p2;
+  const zstar=invNorm(1-(1-conf)/2);
+  const se=Math.sqrt(p1*(1-p1)/n1 + p2*(1-p2)/n2);
+  const me=zstar*se;
+  return {p1,p2,diff,zstar,se,me,lo:diff-me,hi:diff+me,conf};
+}
+function oneMeanTTest({xbar,s,n,mu0,alt,alpha}){
+  const df=n-1;
+  const se=s/Math.sqrt(n);
+  const t=(xbar-mu0)/se;
+  let p;
+  if(alt==="gt") p=1-tCDF(t,df);
+  else if(alt==="lt") p=tCDF(t,df);
+  else p=twoSidedFromUpperTail(1-tCDF(Math.abs(t),df));
+  return {df,se,t,p,alpha,reject:p<alpha};
+}
+function oneMeanCI({xbar,s,n,conf}){
+  const df=n-1;
+  const se=s/Math.sqrt(n);
+  const tstar=invTCrit(1-(1-conf)/2, df);
+  const me=tstar*se;
+  return {df,se,tstar,me,lo:xbar-me,hi:xbar+me,conf};
+}
+function welchDF(s1,n1,s2,n2){
+  const a=(s1*s1)/n1, b=(s2*s2)/n2;
+  return (a+b)*(a+b)/((a*a)/(n1-1) + (b*b)/(n2-1));
+}
+function twoMeanTTest({x1,s1,n1,x2,s2,n2,d0,alt,alpha}){
+  const diff=x1-x2;
+  const se=Math.sqrt((s1*s1)/n1+(s2*s2)/n2);
+  const df=welchDF(s1,n1,s2,n2);
+  const t=(diff-d0)/se;
+  let p;
+  if(alt==="gt") p=1-tCDF(t,df);
+  else if(alt==="lt") p=tCDF(t,df);
+  else p=twoSidedFromUpperTail(1-tCDF(Math.abs(t),df));
+  return {diff,se,df,t,p,alpha,reject:p<alpha};
+}
+function twoMeanCI({x1,s1,n1,x2,s2,n2,conf}){
+  const diff=x1-x2;
+  const se=Math.sqrt((s1*s1)/n1+(s2*s2)/n2);
+  const df=welchDF(s1,n1,s2,n2);
+  const tstar=invTCrit(1-(1-conf)/2, df);
+  const me=tstar*se;
+  return {diff,se,df,tstar,me,lo:diff-me,hi:diff+me,conf};
+}
+function chiSquareGOF({observed, expected, alpha}){
+  const O=parseList(observed);
+  let E=parseList(expected);
+  const n=O.reduce((a,b)=>a+b,0);
+  const sumE=E.reduce((a,b)=>a+b,0);
+  if(E.length===O.length && Math.abs(sumE-1)<1e-6) E=E.map(p=>p*n);
+  if(E.length!==O.length) throw new Error("Expected and observed must have same # categories.");
+  let chi2=0;
+  for(let i=0;i<O.length;i++){
+    if(E[i]<=0) throw new Error("Expected counts must be > 0.");
+    chi2 += (O[i]-E[i])*(O[i]-E[i])/E[i];
+  }
+  const df=O.length-1;
+  const p=1-chi2CDF(chi2,df);
+  return {chi2,df,p,alpha,reject:p<alpha,O,E};
+}
+function chiSquareInd({table, alpha}){
+  const T=parseTable(table);
+  const r=T.length, c=T[0].length;
+  for(const row of T) if(row.length!==c) throw new Error("All rows must have same # columns.");
+  const rowTot=T.map(row=>row.reduce((a,b)=>a+b,0));
+  const colTot=Array(c).fill(0);
+  for(let j=0;j<c;j++) for(let i=0;i<r;i++) colTot[j]+=T[i][j];
+  const n=rowTot.reduce((a,b)=>a+b,0);
+  let chi2=0;
+  for(let i=0;i<r;i++){
+    for(let j=0;j<c;j++){
+      const e=rowTot[i]*colTot[j]/n;
+      chi2 += (T[i][j]-e)*(T[i][j]-e)/e;
+    }
+  }
+  const df=(r-1)*(c-1);
+  const p=1-chi2CDF(chi2,df);
+  return {chi2,df,p,alpha,reject:p<alpha};
+}
+function regressionCalc(xs, ys){
+  const n=xs.length;
+  const xbar=xs.reduce((a,b)=>a+b,0)/n;
+  const ybar=ys.reduce((a,b)=>a+b,0)/n;
+  let Sxx=0,Syy=0,Sxy=0;
+  for(let i=0;i<n;i++){
+    const dx=xs[i]-xbar, dy=ys[i]-ybar;
+    Sxx+=dx*dx; Syy+=dy*dy; Sxy+=dx*dy;
+  }
+  const b1=Sxy/Sxx;
+  const b0=ybar-b1*xbar;
+  const r=Sxy/Math.sqrt(Sxx*Syy);
+  const r2=r*r;
+  const yhat=xs.map(x=>b0+b1*x);
+  const resid=ys.map((y,i)=>y-yhat[i]);
+  return {b0,b1,r,r2,yhat,resid};
+}
+function normalProb({mu,sigma,region,a,b}){
+  const z = (x)=> (x-mu)/sigma;
+  let p, shade;
+  if(region==="left"){ p=normCDF(z(a)); shade={type:"left", a:z(a)}; }
+  else if(region==="right"){ p=1-normCDF(z(a)); shade={type:"right", a:z(a)}; }
+  else if(region==="between"){ p=normCDF(z(b))-normCDF(z(a)); shade={type:"between", a:z(a), b:z(b)}; }
+  else { p=normCDF(z(a)) + (1-normCDF(z(b))); shade={type:"two", a:z(a), b:z(b)}; }
+  return {p, shade, za:z(a), zb:z(b)};
+}
+function tProb({df,region,a,b}){
+  let p, shade;
+  if(region==="left"){ p=tCDF(a,df); shade={type:"left", a}; }
+  else if(region==="right"){ p=1-tCDF(a,df); shade={type:"right", a}; }
+  else if(region==="between"){ p=tCDF(b,df)-tCDF(a,df); shade={type:"between", a, b}; }
+  else { p=tCDF(a,df) + (1-tCDF(b,df)); shade={type:"two", a, b}; }
+  return {p, shade};
+}
+function powerOneProp({p0,p1,n,alpha,alt}){
+  const se0 = Math.sqrt(p0*(1-p0)/n);
+  const zcritR = invNorm(1-alpha);
+  const zcritL = invNorm(alpha);
+  const zcritTwo = invNorm(1-alpha/2);
+
+  let cutL=-Infinity, cutR=Infinity;
+  if(alt==="gt") cutR = p0 + zcritR*se0;
+  else if(alt==="lt") cutL = p0 + zcritL*se0;
+  else { cutL = p0 - zcritTwo*se0; cutR = p0 + zcritTwo*se0; }
+
+  const se1 = Math.sqrt(p1*(1-p1)/n);
+
+  let pow;
+  if(alt==="gt") pow = 1 - normCDF((cutR - p1)/se1);
+  else if(alt==="lt") pow = normCDF((cutL - p1)/se1);
+  else pow = normCDF((cutL - p1)/se1) + (1 - normCDF((cutR - p1)/se1));
+
+  return {pow, cutL, cutR};
+}
+
+/* =========================
+   PDF extraction + rubric scoring
+========================= */
+async function extractTextFromPdf(file){
+  const buf = await file.arrayBuffer();
+  const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buf) });
+  const pdf = await loadingTask.promise;
+  let full = "";
+  for(let pageNum=1; pageNum<=pdf.numPages; pageNum++){
+    const page = await pdf.getPage(pageNum);
+    const content = await page.getTextContent();
+    const pageText = content.items.map(it=>it.str).join(" ");
+    full += `\n\n--- Page ${pageNum} ---\n${pageText}`;
+  }
+  return full.trim();
+}
+function scoreRubric(extractedText, rubricLines, weights){
+  const raw = extractedText || "";
+  const text = raw.toLowerCase();
+
+  const items = rubricLines.map(s=>s.trim()).filter(Boolean);
+  const w = (weights && weights.length===items.length)
+    ? weights
+    : Array(items.length).fill(100/items.length);
+
+  let earned=0;
+  const feedback=[];
+  for(let i=0;i<items.length;i++){
+    const rule=items[i];
+    const wi=w[i];
+    let ok=false;
+
+    if(rule.toLowerCase().startsWith("regex:")){
+      const pat=rule.slice(6).trim();
+      try{ ok=new RegExp(pat,"i").test(raw); }catch{ ok=false; }
+    }else if(rule.toLowerCase().startsWith("must include:")){
+      const phrase=rule.slice(13).trim().toLowerCase();
+      ok = phrase ? text.includes(phrase) : false;
+    }else{
+      ok = text.includes(rule.toLowerCase());
+    }
+
+    if(ok){ earned+=wi; feedback.push(`✅ ${rule}  (+${fmt(wi,2)}%)`); }
+    else { feedback.push(`❌ ${rule}  (+0%)`); }
+  }
+  return {score:clamp(earned,0,100), feedback};
+}
+
+/* =========================
+   Schemas + rendering
+========================= */
+const schemas = {
+  onePropZ:{
+    title:"1-Prop z Test / CI", pill:"1-Prop z",
+    subtabs:[{id:"test",label:"Hypothesis Test"},{id:"ci",label:"Confidence Interval"}],
+    fields:{
+      test:[
+        {id:"x",label:"Successes x",type:"number",value:52},
+        {id:"n",label:"Sample size n",type:"number",value:100},
+        {id:"p0",label:"Null proportion p₀",type:"number",step:"0.001",value:0.5},
+        {id:"alt",label:"Alternative",type:"select",value:"two",options:[
+          {v:"two",t:"p ≠ p₀ (two-sided)"},{v:"gt",t:"p > p₀ (right-tailed)"},{v:"lt",t:"p < p₀ (left-tailed)"}
+        ]},
+        {id:"alpha",label:"Significance α",type:"number",step:"0.001",value:0.05},
+      ],
+      ci:[
+        {id:"x",label:"Successes x",type:"number",value:52},
+        {id:"n",label:"Sample size n",type:"number",value:100},
+        {id:"conf",label:"Confidence level",type:"select",value:"0.95",options:[
+          {v:"0.90",t:"90%"},{v:"0.95",t:"95%"},{v:"0.99",t:"99%"}
+        ]},
+      ]
+    }
+  },
+  twoPropZ:{
+    title:"2-Prop z Test / CI", pill:"2-Prop z",
+    subtabs:[{id:"test",label:"Hypothesis Test"},{id:"ci",label:"Confidence Interval"}],
+    fields:{
+      test:[
+        {id:"x1",label:"Group 1 successes x₁",type:"number",value:48},
+        {id:"n1",label:"Group 1 size n₁",type:"number",value:80},
+        {id:"x2",label:"Group 2 successes x₂",type:"number",value:33},
+        {id:"n2",label:"Group 2 size n₂",type:"number",value:75},
+        {id:"d0",label:"Null diff (p₁−p₂)₀",type:"number",step:"0.001",value:0},
+        {id:"alt",label:"Alternative",type:"select",value:"two",options:[
+          {v:"two",t:"p₁−p₂ ≠ d₀"},{v:"gt",t:"p₁−p₂ > d₀"},{v:"lt",t:"p₁−p₂ < d₀"}
+        ]},
+        {id:"alpha",label:"Significance α",type:"number",step:"0.001",value:0.05},
+      ],
+      ci:[
+        {id:"x1",label:"Group 1 successes x₁",type:"number",value:48},
+        {id:"n1",label:"Group 1 size n₁",type:"number",value:80},
+        {id:"x2",label:"Group 2 successes x₂",type:"number",value:33},
+        {id:"n2",label:"Group 2 size n₂",type:"number",value:75},
+        {id:"conf",label:"Confidence level",type:"select",value:"0.95",options:[
+          {v:"0.90",t:"90%"},{v:"0.95",t:"95%"},{v:"0.99",t:"99%"}
+        ]},
+      ],
+    }
+  },
+  oneMeanT:{
+    title:"1-Mean t Test / CI", pill:"1-Mean t",
+    subtabs:[{id:"test",label:"Hypothesis Test"},{id:"ci",label:"Confidence Interval"}],
+    fields:{
+      test:[
+        {id:"xbar",label:"Sample mean x̄",type:"number",step:"0.001",value:72.4},
+        {id:"s",label:"Sample stdev s",type:"number",step:"0.001",value:10.2},
+        {id:"n",label:"Sample size n",type:"number",value:25},
+        {id:"mu0",label:"Null mean μ₀",type:"number",step:"0.001",value:70},
+        {id:"alt",label:"Alternative",type:"select",value:"two",options:[
+          {v:"two",t:"μ ≠ μ₀ (two-sided)"},{v:"gt",t:"μ > μ₀ (right-tailed)"},{v:"lt",t:"μ < μ₀ (left-tailed)"}
+        ]},
+        {id:"alpha",label:"Significance α",type:"number",step:"0.001",value:0.05},
+      ],
+      ci:[
+        {id:"xbar",label:"Sample mean x̄",type:"number",step:"0.001",value:72.4},
+        {id:"s",label:"Sample stdev s",type:"number",step:"0.001",value:10.2},
+        {id:"n",label:"Sample size n",type:"number",value:25},
+        {id:"conf",label:"Confidence level",type:"select",value:"0.95",options:[
+          {v:"0.90",t:"90%"},{v:"0.95",t:"95%"},{v:"0.99",t:"99%"}
+        ]},
+      ],
+    }
+  },
+  twoMeanT:{
+    title:"2-Mean t Test / CI (Independent)", pill:"2-Mean t",
+    subtabs:[{id:"test",label:"Hypothesis Test"},{id:"ci",label:"Confidence Interval"}],
+    fields:{
+      test:[
+        {id:"x1",label:"Group 1 mean x̄₁",type:"number",step:"0.001",value:81.2},
+        {id:"s1",label:"Group 1 stdev s₁",type:"number",step:"0.001",value:9.1},
+        {id:"n1",label:"Group 1 size n₁",type:"number",value:18},
+        {id:"x2",label:"Group 2 mean x̄₂",type:"number",step:"0.001",value:76.5},
+        {id:"s2",label:"Group 2 stdev s₂",type:"number",step:"0.001",value:8.4},
+        {id:"n2",label:"Group 2 size n₂",type:"number",value:20},
+        {id:"d0",label:"Null diff (μ₁−μ₂)₀",type:"number",step:"0.001",value:0},
+        {id:"alt",label:"Alternative",type:"select",value:"two",options:[
+          {v:"two",t:"μ₁−μ₂ ≠ d₀"},{v:"gt",t:"μ₁−μ₂ > d₀"},{v:"lt",t:"μ₁−μ₂ < d₀"}
+        ]},
+        {id:"alpha",label:"Significance α",type:"number",step:"0.001",value:0.05},
+      ],
+      ci:[
+        {id:"x1",label:"Group 1 mean x̄₁",type:"number",step:"0.001",value:81.2},
+        {id:"s1",label:"Group 1 stdev s₁",type:"number",step:"0.001",value:9.1},
+        {id:"n1",label:"Group 1 size n₁",type:"number",value:18},
+        {id:"x2",label:"Group 2 mean x̄₂",type:"number",step:"0.001",value:76.5},
+        {id:"s2",label:"Group 2 stdev s₂",type:"number",step:"0.001",value:8.4},
+        {id:"n2",label:"Group 2 size n₂",type:"number",value:20},
+        {id:"conf",label:"Confidence level",type:"select",value:"0.95",options:[
+          {v:"0.90",t:"90%"},{v:"0.95",t:"95%"},{v:"0.99",t:"99%"}
+        ]},
+      ],
+    }
+  },
+  chiSquare:{
+    title:"Chi-Square (GOF / Independence)", pill:"χ²",
+    subtabs:[{id:"gof",label:"Goodness of Fit"},{id:"ind",label:"Independence"}],
+    fields:{
+      gof:[
+        {id:"observed",label:"Observed counts (comma-separated)",type:"text",value:"18, 22, 15, 25"},
+        {id:"expected",label:"Expected proportions OR counts",type:"text",value:"0.25, 0.25, 0.25, 0.25"},
+        {id:"alpha",label:"Significance α",type:"number",step:"0.001",value:0.05},
+      ],
+      ind:[
+        {id:"table",label:"Contingency table (rows: commas; newlines for rows)",type:"textarea",value:"12, 18, 10\n8, 22, 15"},
+        {id:"alpha",label:"Significance α",type:"number",step:"0.001",value:0.05},
+      ],
+    }
+  },
+  regression:{
+    title:"Linear Regression + Residuals", pill:"LinReg",
+    subtabs:[{id:"pairs",label:"Enter Data"}],
+    fields:{
+      pairs:[
+        {id:"xvals",label:"x values (comma-separated)",type:"text",value:"1,2,3,4,5,6,7,8"},
+        {id:"yvals",label:"y values (comma-separated)",type:"text",value:"2.1,2.3,2.9,3.8,4.1,4.7,5.5,5.9"},
+      ]
+    }
+  },
+  normalCalc:{
+    title:"Normal / t Probabilities", pill:"Prob",
+    subtabs:[{id:"normal",label:"Normal"},{id:"t",label:"t-Distribution"}],
+    fields:{
+      normal:[
+        {id:"mu",label:"Mean μ",type:"number",step:"0.001",value:0},
+        {id:"sigma",label:"Stdev σ",type:"number",step:"0.001",value:1},
+        {id:"region",label:"Region type",type:"select",value:"between",options:[
+          {v:"left",t:"P(X ≤ a)"},{v:"right",t:"P(X ≥ a)"},{v:"between",t:"P(a ≤ X ≤ b)"},{v:"two",t:"P(X ≤ a or X ≥ b)"}
+        ]},
+        {id:"a",label:"a",type:"number",step:"0.001",value:-1},
+        {id:"b",label:"b (if needed)",type:"number",step:"0.001",value:1},
+      ],
+      t:[
+        {id:"df",label:"Degrees of freedom df",type:"number",value:12},
+        {id:"region",label:"Region type",type:"select",value:"right",options:[
+          {v:"left",t:"P(T ≤ a)"},{v:"right",t:"P(T ≥ a)"},{v:"between",t:"P(a ≤ T ≤ b)"},{v:"two",t:"P(T ≤ a or T ≥ b)"}
+        ]},
+        {id:"a",label:"a",type:"number",step:"0.001",value:2.179},
+        {id:"b",label:"b (if needed)",type:"number",step:"0.001",value:1},
+      ],
+    }
+  },
+  power:{
+    title:"Power (1-Prop z Approx)", pill:"Power",
+    subtabs:[{id:"calc",label:"Compute Power"}],
+    fields:{
+      calc:[
+        {id:"p0",label:"Null p₀",type:"number",step:"0.001",value:0.5},
+        {id:"p1",label:"True p (p₁)",type:"number",step:"0.001",value:0.62},
+        {id:"n",label:"Sample size n",type:"number",value:100},
+        {id:"alpha",label:"Significance α",type:"number",step:"0.001",value:0.05},
+        {id:"alt",label:"Alternative",type:"select",value:"two",options:[
+          {v:"two",t:"Two-sided"},{v:"gt",t:"Right-tailed"},{v:"lt",t:"Left-tailed"}
+        ]},
+      ]
+    }
+  },
+  pdfGrader:{
+    title:"PDF Homework Checker (Rubric-Based)", pill:"PDF",
+    subtabs:[{id:"upload",label:"Upload PDF"},{id:"rubric",label:"Rubric / Key"}],
+    fields:{
+      upload:[
+        {id:"pdf",label:"Upload your PDF (typed text works best)",type:"file"},
+        {id:"extracted",label:"Extracted text (auto)",type:"textarea",value:""},
+      ],
+      rubric:[
+        {id:"expected",label:"Rubric / key (one requirement per line)",type:"textarea",value:
+`Must include: state h0
+Must include: state ha
+Must include: parameter in context
+Must include: check conditions
+Must include: test statistic
+Must include: p-value
+Must include: conclusion in context`},
+        {id:"weights",label:"Weights (optional; comma % same # lines)",type:"text",value:"15,15,15,15,15,10,15"},
+      ],
+    }
+  }
+};
+
+let state={mode:"onePropZ", sub:"test"};
+
+function hintText(){
+  if(state.mode==="pdfGrader") return "PDF checker is rubric-based: it searches for required phrases/regex in extracted text.";
+  return "";
+}
+
+async function render(){
+  const sc=schemas[state.mode];
+  $("#inputTitle").textContent=sc.title;
+  $("#topicPill").textContent=sc.pill;
+
+  const tabs=$("#subtabs"); tabs.innerHTML="";
+  sc.subtabs.forEach(t=>{
+    const d=document.createElement("div");
+    d.className="tab"+(t.id===state.sub?" active":"");
+    d.textContent=t.label;
+    d.onclick=()=>{ state.sub=t.id; render(); };
+    tabs.appendChild(d);
+  });
+
+  const inputs=$("#inputs"); inputs.innerHTML="";
+  const fields=sc.fields[state.sub] || [];
+  for(const f of fields){
+    const wrap=document.createElement("div");
+    wrap.style.marginBottom="10px";
+    const id="fld_"+f.id;
+
+    const lab=document.createElement("label");
+    lab.htmlFor=id; lab.textContent=f.label;
+    wrap.appendChild(lab);
+
+    let el;
+    if(f.type==="select"){
+      el=document.createElement("select"); el.id=id;
+      f.options.forEach(o=>{
+        const opt=document.createElement("option");
+        opt.value=o.v; opt.textContent=o.t; el.appendChild(opt);
+      });
+      el.value=f.value;
+    }else if(f.type==="textarea"){
+      el=document.createElement("textarea"); el.id=id; el.value=f.value || "";
+    }else if(f.type==="file"){
+      el=document.createElement("input");
+      el.type="file"; el.accept="application/pdf"; el.id=id;
+      el.onchange = async ()=>{
+        const file=el.files?.[0];
+        if(!file) return;
+        setPill("Reading PDF…","warn");
+        try{
+          const text=await extractTextFromPdf(file);
+          const out=document.getElementById("fld_extracted");
+          if(out) out.value=text;
+          setPill("PDF loaded","good");
+        }catch(e){
+          console.error(e);
+          setPill("PDF read failed","bad");
+          alert("Could not read that PDF. If it's a scan/photo, it may not contain selectable text.");
+        }
+      };
+    }else{
+      el=document.createElement("input");
+      el.type=(f.type==="text"?"text":"number");
+      el.id=id;
+      if(f.step) el.step=f.step;
+      el.value=f.value;
+      el.inputMode = (el.type==="number" ? "decimal" : "text");
+      el.autocapitalize="off"; el.autocomplete="off";
+    }
+    wrap.appendChild(el);
+    inputs.appendChild(wrap);
+  }
+
+  const hint=document.createElement("div");
+  hint.className="hint";
+  hint.textContent = hintText();
+  inputs.appendChild(hint);
+
+  clearCanvas($("#mainChart")); clearCanvas($("#sideChart"));
+  $("#chartCaption").textContent=""; $("#sideCaption").textContent="";
+  kpi([]);
+  steps([{title:"Pick a tool", dot:"", body:"Choose a topic → fill inputs → tap Compute.\n(For the PWA: add to Home Screen in Safari.)"}]);
+  setPill("Ready");
+}
+
+function drawNormalShaded(shade, title){
+  plotCurve($("#mainChart"), -3.5, 3.5, 0.45, normPDF, shade, title);
+  $("#chartCaption").textContent="Standard Normal curve (shaded region).";
+}
+function drawTShaded(df, shade, title){
+  const f=(x)=>tPDF(x,df);
+  let yMax=0; for(let x=-6;x<=6;x+=0.05) yMax=Math.max(yMax,f(x));
+  plotCurve($("#mainChart"), -6, 6, yMax*1.1, f, shade, title);
+  $("#chartCaption").textContent=`t distribution (df=${fmt(df,0)}) shaded.`;
+}
+function drawChi2(df, xMark){
+  const f=(x)=>chi2PDF(x,df);
+  let xMax=Math.max(20, df*3);
+  let yMax=0; for(let x=0;x<=xMax;x+=0.05) yMax=Math.max(yMax,f(x));
+  plotCurve($("#mainChart"), 0, xMax, yMax*1.15, f, {type:"right", a:xMark}, `χ² distribution (df=${df})`);
+  $("#chartCaption").textContent="Right-tail area = p-value.";
+}
+function drawScoreMeter(score){
+  plotCurve($("#mainChart"), -3, 3, 0.45, normPDF, {type:"between", a:-3, b:(score/100)*6-3}, "Score meter (fun)");
+  $("#chartCaption").textContent="Not a real distribution—just a cute meter.";
+}
+
+$("#computeBtn").onclick = ()=>{
+  try{
+    const m=state.mode, s=state.sub;
+    clearCanvas($("#mainChart")); clearCanvas($("#sideChart"));
+    $("#chartCaption").textContent=""; $("#sideCaption").textContent="";
+
+    if(m==="onePropZ"){
+      if(s==="test"){
+        const res=onePropZTest({x:getVal("x"),n:getVal("n"),p0:getVal("p0"),alt:getVal("alt"),alpha:getVal("alpha")});
+        kpi([
+          {lab:"p̂", val:`<strong>${fmt(res.phat,4)}</strong>`},
+          {lab:"z", val:`<strong>${fmt(res.z,4)}</strong>`},
+          {lab:"p-value", val:`<strong>${fmt(res.p,6)}</strong>`},
+          {lab:"Decision", val:`<strong>${res.reject?"Reject H₀":"Fail to reject H₀"}</strong>`},
+        ]);
+        steps([
+          {title:"Step 1: Define", dot:"good", body:`p̂ = x/n = ${getVal("x")}/${getVal("n")} = ${fmt(res.phat,4)}\nH₀: p = p₀\nHₐ: depends on your choice`},
+          {title:"Step 2: Conditions", dot:(res.conds.c1&&res.conds.c2)?"good":"warn",
+           body:`Check: n·p₀ = ${fmt(getVal("n")*getVal("p0"),3)} ${res.conds.c1?"≥":"<"} 10\nCheck: n·(1−p₀) = ${fmt(getVal("n")*(1-getVal("p0")),3)} ${res.conds.c2?"≥":"<"} 10`},
+          {title:"Step 3: Test statistic", dot:"good", body:`SE₀ = √(p₀(1−p₀)/n) = ${fmt(res.se,6)}\nz = (p̂ − p₀)/SE₀ = ${fmt(res.z,6)}`},
+          {title:"Step 4: p-value", dot:"good", body:`p-value = ${fmt(res.p,8)}`},
+          {title:"Step 5: Conclude", dot:res.reject?"bad":"good", body:`Since p ${res.reject?"<":"≥"} α (${getVal("alpha")}), ${res.reject?"reject":"fail to reject"} H₀.\nWrite conclusion in context.`},
+        ]);
+        const alt=getVal("alt");
+        const shade = alt==="gt" ? {type:"right", a:res.z} : alt==="lt" ? {type:"left", a:res.z}
+                    : {type:"two", a:-Math.abs(res.z), b:Math.abs(res.z)};
+        drawNormalShaded(shade, "z distribution (shaded p-value)");
+        setPill("Done","good");
+      }else{
+        const conf=Number(getVal("conf"));
+        const res=onePropCI({x:getVal("x"),n:getVal("n"),conf});
+        kpi([
+          {lab:"p̂", val:`<strong>${fmt(res.phat,4)}</strong>`},
+          {lab:"z*", val:`<strong>${fmt(res.zstar,4)}</strong>`},
+          {lab:"ME", val:`<strong>${fmt(res.me,5)}</strong>`},
+          {lab:`${Math.round(conf*100)}% CI`, val:`<strong>[${fmt(res.lo,4)}, ${fmt(res.hi,4)}]</strong>`},
+        ]);
+        steps([
+          {title:"Step 1: p̂", dot:"good", body:`p̂ = x/n = ${fmt(res.phat,5)}`},
+          {title:"Step 2: SE", dot:"good", body:`SE = √(p̂(1−p̂)/n) = ${fmt(res.se,6)}`},
+          {title:"Step 3: Critical value", dot:"good", body:`z* for ${Math.round(conf*100)}% = ${fmt(res.zstar,6)}`},
+          {title:"Step 4: Interval", dot:"good", body:`p̂ ± z*·SE = ${fmt(res.phat,5)} ± ${fmt(res.me,5)}\nCI = [${fmt(res.lo,5)}, ${fmt(res.hi,5)}]`},
+        ]);
+        drawNormalShaded({type:"between", a:-res.zstar, b:res.zstar}, "Central confidence area");
+        setPill("Done","good");
+      }
+      return;
+    }
+
+    if(m==="twoPropZ"){
+      if(s==="test"){
+        const res=twoPropZTest({
+          x1:getVal("x1"),n1:getVal("n1"),x2:getVal("x2"),n2:getVal("n2"),
+          d0:getVal("d0"),alt:getVal("alt"),alpha:getVal("alpha")
+        });
+        kpi([
+          {lab:"p̂₁", val:`<strong>${fmt(res.p1,4)}</strong>`},
+          {lab:"p̂₂", val:`<strong>${fmt(res.p2,4)}</strong>`},
+          {lab:"z", val:`<strong>${fmt(res.z,4)}</strong>`},
+          {lab:"p-value", val:`<strong>${fmt(res.p,6)}</strong>`},
+        ]);
+        steps([
+          {title:"Step 1: Sample proportions", dot:"good",
+           body:`p̂₁ = x₁/n₁ = ${fmt(res.p1,5)}\np̂₂ = x₂/n₂ = ${fmt(res.p2,5)}\nDiff = p̂₁ − p̂₂ = ${fmt(res.p1-res.p2,5)}`},
+          {title:"Step 2: Pooled proportion (for test)", dot:"good",
+           body:`p̂(pool) = (x₁+x₂)/(n₁+n₂) = ${fmt(res.pPool,6)}`},
+          {title:"Step 3: Test statistic", dot:"good",
+           body:`SE(pool) = √(p̂(1−p̂)(1/n₁+1/n₂)) = ${fmt(res.se,6)}\nz = ((p̂₁−p̂₂)−d₀)/SE = ${fmt(res.z,6)}`},
+          {title:"Step 4: p-value + decision", dot:res.reject?"bad":"good",
+           body:`p-value = ${fmt(res.p,8)}\nDecision at α=${getVal("alpha")}: ${res.reject?"Reject H₀":"Fail to reject H₀"}`},
+        ]);
+        const alt=getVal("alt");
+        const shade = alt==="gt" ? {type:"right", a:res.z} : alt==="lt" ? {type:"left", a:res.z}
+                    : {type:"two", a:-Math.abs(res.z), b:Math.abs(res.z)};
+        drawNormalShaded(shade, "z distribution (p-value)");
+        setPill("Done","good");
+      }else{
+        const conf=Number(getVal("conf"));
+        const res=twoPropCI({x1:getVal("x1"),n1:getVal("n1"),x2:getVal("x2"),n2:getVal("n2"),conf});
+        kpi([
+          {lab:"Diff p̂₁−p̂₂", val:`<strong>${fmt(res.diff,4)}</strong>`},
+          {lab:"z*", val:`<strong>${fmt(res.zstar,4)}</strong>`},
+          {lab:"ME", val:`<strong>${fmt(res.me,5)}</strong>`},
+          {lab:`${Math.round(conf*100)}% CI`, val:`<strong>[${fmt(res.lo,4)}, ${fmt(res.hi,4)}]</strong>`},
+        ]);
+        steps([
+          {title:"Step 1: Compute p̂’s", dot:"good", body:`p̂₁=${fmt(res.p1,5)}\np̂₂=${fmt(res.p2,5)}\nDiff=${fmt(res.diff,5)}`},
+          {title:"Step 2: SE (unpooled)", dot:"good", body:`SE = √(p̂₁(1−p̂₁)/n₁ + p̂₂(1−p̂₂)/n₂) = ${fmt(res.se,6)}`},
+          {title:"Step 3: Interval", dot:"good", body:`Diff ± z*·SE = ${fmt(res.diff,5)} ± ${fmt(res.me,5)}\nCI=[${fmt(res.lo,5)}, ${fmt(res.hi,5)}]`},
+        ]);
+        drawNormalShaded({type:"between", a:-res.zstar, b:res.zstar}, "Central confidence area");
+        setPill("Done","good");
+      }
+      return;
+    }
+
+    if(m==="oneMeanT"){
+      if(s==="test"){
+        const res=oneMeanTTest({xbar:getVal("xbar"),s:getVal("s"),n:getVal("n"),mu0:getVal("mu0"),alt:getVal("alt"),alpha:getVal("alpha")});
+        kpi([
+          {lab:"df", val:`<strong>${fmt(res.df,0)}</strong>`},
+          {lab:"t", val:`<strong>${fmt(res.t,4)}</strong>`},
+          {lab:"p-value", val:`<strong>${fmt(res.p,6)}</strong>`},
+          {lab:"Decision", val:`<strong>${res.reject?"Reject H₀":"Fail to reject H₀"}</strong>`},
+        ]);
+        steps([
+          {title:"Step 1: SE", dot:"good", body:`SE = s/√n = ${fmt(res.se,6)}`},
+          {title:"Step 2: t statistic", dot:"good", body:`t = (x̄ − μ₀)/SE = ${fmt(res.t,6)}`},
+          {title:"Step 3: p-value", dot:"good", body:`p-value = ${fmt(res.p,8)} (df=${fmt(res.df,0)})`},
+          {title:"Step 4: Conclude", dot:res.reject?"bad":"good", body:`At α=${getVal("alpha")}, ${res.reject?"reject":"fail to reject"} H₀.\nConclusion in context.`},
+        ]);
+        const alt=getVal("alt");
+        const shade = alt==="gt" ? {type:"right", a:res.t} : alt==="lt" ? {type:"left", a:res.t}
+                    : {type:"two", a:-Math.abs(res.t), b:Math.abs(res.t)};
+        drawTShaded(res.df, shade, "t distribution (p-value)");
+        setPill("Done","good");
+      }else{
+        const conf=Number(getVal("conf"));
+        const res=oneMeanCI({xbar:getVal("xbar"),s:getVal("s"),n:getVal("n"),conf});
+        kpi([
+          {lab:"df", val:`<strong>${fmt(res.df,0)}</strong>`},
+          {lab:"t*", val:`<strong>${fmt(res.tstar,4)}</strong>`},
+          {lab:"ME", val:`<strong>${fmt(res.me,5)}</strong>`},
+          {lab:`${Math.round(conf*100)}% CI`, val:`<strong>[${fmt(res.lo,4)}, ${fmt(res.hi,4)}]</strong>`},
+        ]);
+        steps([
+          {title:"Step 1: SE", dot:"good", body:`SE=s/√n=${fmt(res.se,6)}`},
+          {title:"Step 2: Critical value", dot:"good", body:`t* for ${Math.round(conf*100)}% with df=${fmt(res.df,0)} is ${fmt(res.tstar,6)}`},
+          {title:"Step 3: Interval", dot:"good", body:`x̄ ± t*·SE = ${fmt(getVal("xbar"),5)} ± ${fmt(res.me,5)}\nCI=[${fmt(res.lo,5)}, ${fmt(res.hi,5)}]`},
+        ]);
+        drawTShaded(res.df, {type:"between", a:-res.tstar, b:res.tstar}, "Central confidence area");
+        setPill("Done","good");
+      }
+      return;
+    }
+
+    if(m==="twoMeanT"){
+      if(s==="test"){
+        const res=twoMeanTTest({
+          x1:getVal("x1"),s1:getVal("s1"),n1:getVal("n1"),
+          x2:getVal("x2"),s2:getVal("s2"),n2:getVal("n2"),
+          d0:getVal("d0"),alt:getVal("alt"),alpha:getVal("alpha")
+        });
+        kpi([
+          {lab:"Diff x̄₁−x̄₂", val:`<strong>${fmt(res.diff,4)}</strong>`},
+          {lab:"df (Welch)", val:`<strong>${fmt(res.df,2)}</strong>`},
+          {lab:"t", val:`<strong>${fmt(res.t,4)}</strong>`},
+          {lab:"p-value", val:`<strong>${fmt(res.p,6)}</strong>`},
+        ]);
+        steps([
+          {title:"Step 1: SE", dot:"good", body:`SE = √(s₁²/n₁ + s₂²/n₂) = ${fmt(res.se,6)}`},
+          {title:"Step 2: df (Welch)", dot:"good", body:`df ≈ ${fmt(res.df,4)}`},
+          {title:"Step 3: t statistic", dot:"good", body:`t = ((x̄₁−x̄₂)−d₀)/SE = ${fmt(res.t,6)}`},
+          {title:"Step 4: Decision", dot:res.reject?"bad":"good", body:`p=${fmt(res.p,8)} at α=${getVal("alpha")} ⇒ ${res.reject?"Reject":"Fail to reject"} H₀`},
+        ]);
+        const alt=getVal("alt");
+        const shade = alt==="gt" ? {type:"right", a:res.t} : alt==="lt" ? {type:"left", a:res.t}
+                    : {type:"two", a:-Math.abs(res.t), b:Math.abs(res.t)};
+        drawTShaded(res.df, shade, "t distribution (p-value)");
+        setPill("Done","good");
+      }else{
+        const conf=Number(getVal("conf"));
+        const res=twoMeanCI({
+          x1:getVal("x1"),s1:getVal("s1"),n1:getVal("n1"),
+          x2:getVal("x2"),s2:getVal("s2"),n2:getVal("n2"),
+          conf
+        });
+        kpi([
+          {lab:"Diff x̄₁−x̄₂", val:`<strong>${fmt(res.diff,4)}</strong>`},
+          {lab:"df (Welch)", val:`<strong>${fmt(res.df,2)}</strong>`},
+          {lab:"t*", val:`<strong>${fmt(res.tstar,4)}</strong>`},
+          {lab:`${Math.round(conf*100)}% CI`, val:`<strong>[${fmt(res.lo,4)}, ${fmt(res.hi,4)}]</strong>`},
+        ]);
+        steps([
+          {title:"Step 1: SE", dot:"good", body:`SE = √(s₁²/n₁ + s₂²/n₂) = ${fmt(res.se,6)}`},
+          {title:"Step 2: Critical value", dot:"good", body:`t* = ${fmt(res.tstar,6)} with df≈${fmt(res.df,4)}`},
+          {title:"Step 3: Interval", dot:"good", body:`Diff ± t*·SE = ${fmt(res.diff,5)} ± ${fmt(res.me,5)}\nCI=[${fmt(res.lo,5)}, ${fmt(res.hi,5)}]`},
+        ]);
+        drawTShaded(res.df, {type:"between", a:-res.tstar, b:res.tstar}, "Central confidence area");
+        setPill("Done","good");
+      }
+      return;
+    }
+
+    if(m==="chiSquare"){
+      if(s==="gof"){
+        const res=chiSquareGOF({observed:getVal("observed"), expected:getVal("expected"), alpha:getVal("alpha")});
+        kpi([
+          {lab:"χ²", val:`<strong>${fmt(res.chi2,4)}</strong>`},
+          {lab:"df", val:`<strong>${fmt(res.df,0)}</strong>`},
+          {lab:"p-value", val:`<strong>${fmt(res.p,6)}</strong>`},
+          {lab:"Decision", val:`<strong>${res.reject?"Reject H₀":"Fail to reject H₀"}</strong>`},
+        ]);
+        steps([
+          {title:"Step 1: Expected counts", dot:"good", body:`E: [${res.E.map(v=>fmt(v,3)).join(", ")}]`},
+          {title:"Step 2: Compute χ²", dot:"good", body:`χ² = Σ (O−E)²/E = ${fmt(res.chi2,6)}`},
+          {title:"Step 3: p-value", dot:"good", body:`p = P(χ² ≥ ${fmt(res.chi2,4)}) = ${fmt(res.p,8)} (df=${res.df})`},
+          {title:"Step 4: Decision", dot:res.reject?"bad":"good", body:`At α=${getVal("alpha")}: ${res.reject?"Reject":"Fail to reject"} H₀`},
+        ]);
+        drawChi2(res.df, res.chi2);
+        setPill("Done","good");
+      }else{
+        const res=chiSquareInd({table:getVal("table"), alpha:getVal("alpha")});
+        kpi([
+          {lab:"χ²", val:`<strong>${fmt(res.chi2,4)}</strong>`},
+          {lab:"df", val:`<strong>${fmt(res.df,0)}</strong>`},
+          {lab:"p-value", val:`<strong>${fmt(res.p,6)}</strong>`},
+          {lab:"Decision", val:`<strong>${res.reject?"Reject H₀":"Fail to reject H₀"}</strong>`},
+        ]);
+        steps([
+          {title:"Step 1: df", dot:"good", body:`df = (r−1)(c−1) = ${res.df}`},
+          {title:"Step 2: χ² + p-value", dot:"good", body:`χ²=${fmt(res.chi2,6)}\np=${fmt(res.p,8)}`},
+          {title:"Step 3: Decision", dot:res.reject?"bad":"good", body:`At α=${getVal("alpha")}: ${res.reject?"Reject":"Fail to reject"} H₀`},
+        ]);
+        drawChi2(res.df, res.chi2);
+        setPill("Done","good");
+      }
+      return;
+    }
+
+    if(m==="regression"){
+      const xs=parseList(getVal("xvals"));
+      const ys=parseList(getVal("yvals"));
+      if(xs.length!==ys.length || xs.length<2) throw new Error("x and y must have same length (≥2).");
+      const res=regressionCalc(xs,ys);
+      kpi([
+        {lab:"ŷ", val:`<strong>ŷ = ${fmt(res.b0,4)} + ${fmt(res.b1,4)}x</strong>`},
+        {lab:"r", val:`<strong>${fmt(res.r,4)}</strong>`},
+        {lab:"r²", val:`<strong>${fmt(res.r2,4)}</strong>`},
+        {lab:"n", val:`<strong>${xs.length}</strong>`},
+      ]);
+      steps([
+        {title:"Model", dot:"good", body:`Least squares line: ŷ = b₀ + b₁x\nb₀=${fmt(res.b0,6)}, b₁=${fmt(res.b1,6)}`},
+        {title:"Strength", dot:"good", body:`r=${fmt(res.r,6)} ⇒ r²=${fmt(res.r2,6)} (~${fmt(res.r2*100,2)}% of y-variation explained)`},
+        {title:"Residuals", dot:"good", body:`Residuals are y − ŷ.\nFirst few: ${res.resid.slice(0,6).map(v=>fmt(v,4)).join(", ")}${res.resid.length>6?" …":""}`},
+      ]);
+      scatterPlot($("#mainChart"), xs.map((x,i)=>[x,ys[i]]), {b0:res.b0,b1:res.b1}, "Scatter + regression line");
+      $("#chartCaption").textContent="Scatterplot with least-squares line.";
+      scatterPlot($("#sideChart"), xs.map((x,i)=>[x,res.resid[i]]), null, "Residual plot");
+      $("#sideCaption").textContent="Residual plot (should look random).";
+      setPill("Done","good");
+      return;
+    }
+
+    if(m==="normalCalc"){
+      if(s==="normal"){
+        const res=normalProb({mu:getVal("mu"),sigma:getVal("sigma"),region:getVal("region"),a:getVal("a"),b:getVal("b")});
+        kpi([
+          {lab:"z(a)", val:`<strong>${fmt(res.za,4)}</strong>`},
+          {lab:"z(b)", val:`<strong>${fmt(res.zb,4)}</strong>`},
+          {lab:"Probability", val:`<strong>${fmt(res.p,6)}</strong>`},
+          {lab:"Note", val:`<strong>shaded</strong>`},
+        ]);
+        steps([
+          {title:"Standardize", dot:"good", body:`z = (x−μ)/σ\nz(a)=${fmt(res.za,6)}\nz(b)=${fmt(res.zb,6)}`},
+          {title:"Area", dot:"good", body:`Probability = ${fmt(res.p,8)}`},
+        ]);
+        drawNormalShaded(res.shade, "Standard Normal (area)");
+        setPill("Done","good");
+      }else{
+        const df=getVal("df");
+        const res=tProb({df,region:getVal("region"),a:getVal("a"),b:getVal("b")});
+        kpi([
+          {lab:"df", val:`<strong>${fmt(df,0)}</strong>`},
+          {lab:"Probability", val:`<strong>${fmt(res.p,6)}</strong>`},
+          {lab:"Region", val:`<strong>${getVal("region")}</strong>`},
+          {lab:"Note", val:`<strong>shaded</strong>`},
+        ]);
+        steps([
+          {title:"Area", dot:"good", body:`Probability = ${fmt(res.p,8)}`},
+        ]);
+        drawTShaded(df, res.shade, "t distribution (area)");
+        setPill("Done","good");
+      }
+      return;
+    }
+
+    if(m==="power"){
+      const res=powerOneProp({p0:getVal("p0"),p1:getVal("p1"),n:getVal("n"),alpha:getVal("alpha"),alt:getVal("alt")});
+      kpi([
+        {lab:"Power", val:`<strong>${fmt(res.pow*100,2)}%</strong>`},
+        {lab:"Cutoff L", val:`<strong>${isFinite(res.cutL)?fmt(res.cutL,4):"—"}</strong>`},
+        {lab:"Cutoff R", val:`<strong>${isFinite(res.cutR)?fmt(res.cutR,4):"—"}</strong>`},
+        {lab:"n", val:`<strong>${fmt(getVal("n"),0)}</strong>`},
+      ]);
+      steps([
+        {title:"Rejection region", dot:"good", body:`Reject based on p̂ cutoffs from H₀.`},
+        {title:"Power", dot:"good", body:`Power = P(reject | true p=p₁) = ${fmt(res.pow,8)} (${fmt(res.pow*100,2)}%)`},
+      ]);
+      drawScoreMeter(res.pow*100);
+      setPill("Done","good");
+      return;
+    }
+
+    if(m==="pdfGrader"){
+      const extracted = getVal("extracted") || "";
+      const rubricRaw = getVal("expected") || "";
+      const weightsRaw = getVal("weights") || "";
+      const rubricLines = rubricRaw.split("\n").map(s=>s.trim()).filter(Boolean);
+      const weights = weightsRaw ? weightsRaw.split(",").map(s=>Number(s.trim())).filter(x=>isFinite(x)) : null;
+
+      if(!extracted.trim()) throw new Error("Upload a PDF first (typed text works best).");
+      if(!rubricLines.length) throw new Error("Add at least one rubric line.");
+
+      const {score, feedback} = scoreRubric(extracted, rubricLines, weights);
+
+      kpi([
+        {lab:"Score", val:`<strong>${fmt(score,2)}%</strong>`},
+        {lab:"Rubric items", val:`<strong>${rubricLines.length}</strong>`},
+        {lab:"Extracted text", val:`<strong>${fmt(extracted.length,0)} chars</strong>`},
+        {lab:"Privacy", val:`<strong>on-device</strong>`},
+      ]);
+
+      steps([
+        {title:"Rubric-based grading", dot:"good",
+         body:`Checked your PDF text:\n\n${feedback.join("\n")}`},
+        {title:"Fast FRQ checklist", dot:"warn",
+         body:`State parameter + context\nState H₀ / Hₐ\nConditions\nTest statistic + p-value\nConclusion IN CONTEXT`},
+      ]);
+
+      drawScoreMeter(score);
+      setPill("Scored","good");
+      return;
+    }
+
+  }catch(e){
+    console.error(e);
+    setPill("Error","bad");
+    steps([{title:"Fix this input issue", dot:"bad", body:String(e.message || e)}]);
+  }
+};
+
+$("#exampleBtn").onclick = ()=>{
+  const order=["onePropZ","twoPropZ","oneMeanT","twoMeanT","chiSquare","regression","normalCalc","power","pdfGrader"];
+  const i=order.indexOf(state.mode);
+  const next=order[(i+1+order.length)%order.length];
+  $("#modeSelect").value=next;
+  state.mode=next;
+  state.sub=schemas[next].subtabs[0].id;
+  render();
+};
+$("#resetBtn").onclick = ()=>{
+  state.mode=$("#modeSelect").value;
+  state.sub=schemas[state.mode].subtabs[0].id;
+  render();
+};
+$("#modeSelect").onchange = ()=>{
+  state.mode=$("#modeSelect").value;
+  state.sub=schemas[state.mode].subtabs[0].id;
+  render();
+};
+
+render();
+</script>
+</body>
+</html>
